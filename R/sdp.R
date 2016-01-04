@@ -1,4 +1,4 @@
-#' @title Stochastic Dynamic Programming
+#' @title Stochastic Dynamic Programming (Deprecated function; use 'sdp_supply' instead)
 #' @description Derives the optimal release policy based on storage state, inflow class and within-year period.
 #' @param Q             time series object. Net inflows to the reservoir.
 #' @param capacity      numerical. The reservoir storage capacity (must be the same volumetric unit as Q and the target release).
@@ -25,17 +25,19 @@ sdp <- function (Q, capacity, target, S_disc = 1000, R_disc = 10,
                  Q_disc = c(0.0, 0.2375, 0.4750, 0.7125, 0.95, 1.0),
                  loss_exp = 2, S_initial = 1, plot = TRUE, tol = 0.99, rep_rrv = FALSE){
   
+  .Deprecated("dp_supply")
+  
   frq <- frequency(Q)
   if (is.ts(Q)==FALSE) stop("Q must be seasonal time series object with frequency of 12 or 4")
   if (frq != 12 && frq != 4) stop("Q must have frequency of 4 or 12")  
   if (start(Q)[2] != 1){
     message("NOTE: First incomplete year of time series removed")
     Q <- window(Q, start = c(start(Q)[1] + 1, 1), frequency = frq)
-    }
+  }
   if(end(Q)[2] != frq){
     message("NOTE: Final incomplete year of time series removed")
     Q <- window(Q, end = c(end(Q)[1] - 1, frq), frequency = frq)
-    }
+  }
   Q_month_mat <- matrix(Q, byrow = TRUE, ncol = frq)                                        
   n_Qcl <- length(Q_disc) - 1
   Q.probs <- diff(Q_disc)
@@ -54,7 +56,7 @@ sdp <- function (Q, capacity, target, S_disc = 1000, R_disc = 10,
     
     
     Q_class.mat[,m] <- as.numeric(as.vector(factor(Q_disc_x,
-                                                 labels = c(1:n_Qcl))))
+                                                   labels = c(1:n_Qcl))))
   }
   Q_trans_probs <- array(0, c(length(Q_disc) - 1, length(Q_disc) - 1, frq))             
   for (m in 1 : frq){
@@ -64,8 +66,8 @@ sdp <- function (Q, capacity, target, S_disc = 1000, R_disc = 10,
                                                                frq] == cl) + 1, 1], 1:n_Qcl))
       }else{
         Tr.count <- table(factor(Q_class.mat[which(Q_class.mat[,m] == cl),
-                                                  m + 1], 1:n_Qcl)) 
-        }
+                                             m + 1], 1:n_Qcl)) 
+      }
       Tr.freq <-  Tr.count / sum(Tr.count)
       Q_trans_probs[cl,,m] <- Tr.freq
     }}
@@ -110,12 +112,12 @@ sdp <- function (Q, capacity, target, S_disc = 1000, R_disc = 10,
     
     R_policy_test <- R_policy
   }
-    
-    # ===================================================================================
-    
-    # POLICY SIMULATION------------------------------------------------------------------
-    
-
+  
+  # ===================================================================================
+  
+  # POLICY SIMULATION------------------------------------------------------------------
+  
+  
   S <- vector("numeric",length(Q) + 1); S[1] <- S_initial * capacity    
   R_rec <- vector("numeric",length(Q))                      
   for (yr in 1:nrow(Q_month_mat)) {
@@ -144,7 +146,7 @@ sdp <- function (Q, capacity, target, S_disc = 1000, R_disc = 10,
   if(plot) {
     plot(S, ylab = "storage", ylim = c(0, capacity))
     plot(R_rec, ylab = "release", ylim = c(0, target))
-    }
+  }
   
   if (rep_rrv == TRUE){
     
@@ -193,7 +195,7 @@ sdp <- function (Q, capacity, target, S_disc = 1000, R_disc = 10,
                         "time_based_reliability", "volumetric_reliability",
                         "resilience", "vulnerability", "flow_disc")
     
-
+    
     
   } else {
     results <- list(R_policy, Bellman, S, R_rec, Q_disc)
