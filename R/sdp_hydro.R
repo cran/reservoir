@@ -87,7 +87,7 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
     S_states <- seq(from = 0, to = capacity, by = capacity / S_disc)                   
     R_disc_x <- seq(from = 0, to = qmax, by = qmax / R_disc)
     Shell.array <- array(0,dim=c(length(S_states),length(R_disc_x),length(Q.probs)))
-    R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))             
+    #R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))             
     Rev_to_go <- vector("numeric",length=length(S_states))
     Results_mat <- matrix(0,nrow=length(S_states),ncol=frq)
     R_policy <- matrix(0,nrow=length(S_states),ncol=frq)
@@ -107,7 +107,7 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
     R_disc_x <- seq(from = 0, to = qmax, by = qmax / R_disc)
     Shell.array <- array(0, dim = c(length(S_states), length(R_disc_x),
                                     length(Q.probs)))
-    R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))             
+    #R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))             
     Q_class.mat <- matrix(nrow=length(Q_month_mat[,1]),ncol=frq)
     for (m in 1:frq){
       Q_disc_x <- gtools::quantcut(Q_month_mat[,m], Q_disc)
@@ -147,6 +147,9 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
       return(Ay)
     }
     yconst <- head - GetLevel(c, capacity * 10 ^ 6)
+    if (yconst <0){
+      capacity_live <- min(capacity_live, capacity - (-yconst) ^ 3 * c ^ 2 / 6 / 10 ^ 6)
+    }
   } else {
     c <- 2 * capacity / (max_depth * surface_area)
     GetLevel <- function(c, V){
@@ -159,6 +162,9 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
       return(Ay)
     }
     yconst <- head - max_depth
+    if (yconst <0){
+      capacity_live <- min(capacity_live, capacity - (-yconst / max_depth) ^ (2 / c) * capacity )
+    }
   }
   
   GetEvap <- function(s, q, r, ev){
@@ -190,15 +196,16 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
         R.cstr <- sweep(Shell.array, 3, Q_class_med[,t], "+") +
           sweep(Shell.array, 1, S_states, "+") - 
           sweep(Shell.array, 1, evap_seas[t] * S_area_rel / 10 ^ 6, "+")
+        R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))
         R.star[,2:(R_disc + 1),][which(R.star[,2:(R_disc + 1),] > R.cstr[,2 : (R_disc + 1),] - (capacity - capacity_live))] <- NaN
         S.t_plus_1 <- R.cstr - R.star
         S.t_plus_1[which(S.t_plus_1 < 0)] <- 0
+        S.t_plus_1[which(S.t_plus_1 > capacity)] <- capacity
         
         H_arr <- GetLevel(c, ((S.t_plus_1 + S_states) * (10 ^ 6))  / 2) + yconst
         Rev_arr <- R.star * H_arr
         Implied_S_state <- round(1 + (S.t_plus_1 / capacity)
                                  * (length(S_states) - 1))
-        Implied_S_state[which(Implied_S_state > length(S_states))] <- length(S_states)
         Rev_to_go.arr <- array(Rev_to_go[Implied_S_state],
                                 dim = c(length(S_states), length(R_disc_x) , length(Q.probs)))       
         Max_rev_arr <- Rev_arr + Rev_to_go.arr
@@ -224,15 +231,17 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
         R.cstr <- sweep(Shell.array, 3, Q_class_med[,t], "+") +
           sweep(Shell.array, 1, S_states, "+") -
           sweep(Shell.array, 1, evap_seas[t] * S_area_rel / 10 ^ 6, "+")
+        R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))
         R.star[,2:(R_disc + 1),][which(R.star[,2:(R_disc + 1),] > R.cstr[,2 : (R_disc + 1),] - (capacity - capacity_live))] <- NaN
         S.t_plus_1 <- R.cstr - R.star
         S.t_plus_1[which(S.t_plus_1 < 0)] <- 0
+        S.t_plus_1[which(S.t_plus_1 > capacity)] <- capacity
+        
         H_arr <- GetLevel(c, ((S.t_plus_1 + S_states) * (10 ^ 6))  / 2) + yconst
         Rev_arr <- R.star * H_arr
         
         Implied_S_state <- round(1 + (S.t_plus_1 / capacity)
                                  * (length(S_states) - 1))
-        Implied_S_state[which(Implied_S_state > length(S_states))] <- length(S_states)
         Rev_to_go.arr <- array(Rev_to_go,
                                 dim = c(length(S_states), n_Qcl, n_Qcl))       
         Expectation <- apply(sweep(Rev_to_go.arr, c(2,3),
@@ -275,6 +284,7 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
         Q_class <- which.min(abs(as.vector(Q_class_med[,month] - Qx)))
         R <- R_disc_x[R_policy[S_state,Q_class,month]]
       }
+      R <- min(R, S[t_index] + Qx - (capacity - capacity_live))
       R_rec[t_index] <- R
       E[t_index] <- GetEvap(s = S[t_index], q = Qx, r = R, ev = evap[t_index])
       y[t_index] <- GetLevel(c, S[t_index] * 10 ^ 6)
@@ -291,11 +301,12 @@ sdp_hydro <- function (Q, capacity, capacity_live = capacity,
           S[t_index + 1] <- S[t_index] - R + Qx - E[t_index]
         }
       }
-      Power[t_index] <- efficiency * 1000 * 9.81 * (GetLevel(c,mean(S[t_index:t_index + 1]) * (10 ^ 6)) + yconst) * R_rec[t_index] / (365.25 / frq * 24 * 60 * 60)
+      Power[t_index] <- max(efficiency * 1000 * 9.81 * (GetLevel(c,mean(S[t_index:(t_index + 1)]) * (10 ^ 6)) + yconst) * 
+                              R_rec[t_index] / (365.25 / frq * 24 * 60 * 60), 0)
     }
   }
   R_policy <- (R_policy - 1) / R_disc
-  S <- ts(S[1:length(S) - 1],start = start(Q),frequency = frq)
+  S <- ts(S[1:(length(S) - 1)],start = start(Q),frequency = frq)
   R_rec <- ts(R_rec, start = start(Q), frequency = frq)
   E <- ts(E, start = start(Q), frequency = frq)
   y <- ts(y, start = start(Q), frequency = frq)
