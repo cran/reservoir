@@ -45,14 +45,9 @@ dp_multi <- function(Q, capacity, target, surface_area, max_depth, evap,
   if (missing(surface_area)) {
     surface_area <- 0
   }
-  
-  
+
   S_states <- seq(from = 0, to = capacity, by = capacity / S_disc)
   R_disc_x <- seq(from = 0, to = R_max, by = R_max / R_disc)
-  
-  if (target %in% R_disc_x == FALSE) {
-    warning("Warning: target not contained in R_disc")
-  }
   
   R_costs <- (target - R_disc_x) / target
   R_costs[which(R_costs < 0)] <- 0
@@ -63,7 +58,6 @@ dp_multi <- function(Q, capacity, target, surface_area, max_depth, evap,
   Cost_to_go <- vector("numeric", length = length(S_states))
   Bellman <- matrix(0, nrow = length(S_states), ncol = length(Q))
   R_policy <- matrix(0, ncol = length(Q), nrow = length(S_states))
-  
   
   if (missing(max_depth)){
     c <- sqrt(2) / 3 * (surface_area * 10 ^ 6) ^ (3/2) / (capacity * 10 ^ 6)
@@ -162,7 +156,8 @@ dp_multi <- function(Q, capacity, target, surface_area, max_depth, evap,
   # ===================================================================================
   
   
-  total_release_cost <- sum((R/target)[which((R/target) <  1)] ^ loss_exp[1])
+  
+  total_release_cost <- sum((1 - R/target)[which((R/target) <  1)] ^ loss_exp[1])
   total_spill_cost <- sum((Spill / quantile(Q, spill_targ)) ^ loss_exp[2])
   total_volume_cost <- sum(((S - vol_targ * capacity) / (vol_targ * capacity)) ^ loss_exp[3])
   total_weighted_cost <- weights[1] * total_release_cost + weights[2] * total_spill_cost + weights[3] * total_volume_cost 

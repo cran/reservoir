@@ -2,6 +2,7 @@
 
 export(Hurst)
 export(Rippl)
+export(dirtyreps)
 export(dp)
 export(dp_hydro)
 export(dp_multi)
@@ -17,3 +18,5 @@ export(yield)
 import(stats)
 importFrom(graphics,abline)
 importFrom(graphics,lines)
+importFrom(utils,head)
+importFrom(utils,tail)

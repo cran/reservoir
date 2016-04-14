@@ -76,9 +76,6 @@ sdp_multi <- function (Q, capacity, target, surface_area, max_depth, evap,
                          probs = Q_disc[-1] - (Q.probs / 2))
     S_states <- seq(from = 0, to = capacity, by = capacity / S_disc)                   
     R_disc_x <- seq(from = 0, to = R_max, by = R_max / R_disc)
-    if (target %in% R_disc_x == FALSE) {
-      warning("target not contained in R_disc; consider a different discretization")
-    }
     Shell.array <- array(0,dim=c(length(S_states),length(R_disc_x),length(Q.probs)))
     #R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))             
     Cost_to_go <- vector("numeric",length=length(S_states))
@@ -97,9 +94,6 @@ sdp_multi <- function (Q, capacity, target, surface_area, max_depth, evap,
                          probs = Q_disc[-1] - (Q.probs / 2))
     S_states <- seq(from = 0, to = capacity, by = capacity / S_disc)                   
     R_disc_x <- seq(from = 0, to = R_max, by = R_max / R_disc)
-    if (target %in% R_disc_x == FALSE) {
-      warning("target not contained in R_disc; consider a different discretization")
-    }
     Shell.array <- array(0, dim = c(length(S_states), length(R_disc_x),
                                     length(Q.probs)))
     #R.star <- aperm(apply(Shell.array, c(1, 3), "+", R_disc_x), c(2, 1, 3))             
@@ -327,7 +321,7 @@ sdp_multi <- function (Q, capacity, target, surface_area, max_depth, evap,
     plot(Spill, ylab = "Uncontrolled spill")
   }
   
-  total_release_cost <- sum((R_rec/target)[which((R_rec/target) <  1)] ^ loss_exp[1])
+  total_release_cost <- sum((1 - R_rec/target)[which((R_rec/target) <  1)] ^ loss_exp[1])
   total_spill_cost <- sum((Spill / quantile(Q, spill_targ)) ^ loss_exp[2])
   total_volume_cost <- sum(((S - vol_targ * capacity) / (vol_targ * capacity)) ^ loss_exp[3])
   total_weighted_cost <- weights[1] * total_release_cost + weights[2] * total_spill_cost + weights[3] * total_volume_cost 
